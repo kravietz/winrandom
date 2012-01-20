@@ -73,7 +73,7 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 				return NULL;
 			}
 		iContinousRndTest = rand_out; /* preserve this value for continuous test */
-		if(rand_out < rand_max) break; // found!
+		if(rand_out < (unsigned int) rand_max) break; // found!
 	}
 
 	CryptReleaseContext(hProv, 0);
