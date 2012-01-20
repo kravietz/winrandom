@@ -1,0 +1,35 @@
+Metadata-Version: 1.0
+Name: winrandom
+Version: 1.2
+Summary: Access to Cryptographic API random generator
+Home-page: http://ipsec.pl/winrandom
+Author: Pawel Krawczyk
+Author-email: pawel.krawczyk@hush.com
+License: Public domain
+Description: 
+        This module gives direct access to Windows Cryptographic
+        API CryptGetRandom() function.
+        
+        Examples:
+        
+        >>> import winrandom
+        >>> print winrandom.long()
+        2141228967
+        >>> print repr(winrandom.bytes(10))
+        <10 random bytes>
+        >> print winrandom.range(1000)
+        123
+        
+        Changelog:
+        1.0	added winrandom.long()
+        1.1	added winrandom.bytes(num) returning num random bytes
+        1.2 added winrandom.range(max)
+        
+Platform: Win32
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: Public Domain
+Classifier: Topic :: Security :: Cryptography
+Classifier: Programming Language :: C
+Classifier: Programming Language :: Python
+Classifier: Intended Audience :: Developers
+Classifier: Operating System :: Microsoft :: Windows
