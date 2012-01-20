@@ -17,18 +17,6 @@ PyObject *exception = NULL;
 #include <stdio.h>
 #include <ctype.h>
 
-void initmodname()
-  {
-	PyObject *d;
-
-#if PYTHON_API_VERSION >= 1007
-    exception = PyErr_NewException("winrandom.error", NULL, NULL);
-#else
-    exception = Py_BuildValue("s", "winrandom.error");
-#endif
-    PyDict_SetItemString(d, "error", exception);
-  }
-
 /* This function implements B.5.1.1 Simple Discard Method from NIST SP800-90
  * http://csrc.nist.gov/publications/nistpubs/800-90/SP800-90revised_March2007.pdf
  * Simple discard method is used to produce random LONG until it fits in 0..MAX range
@@ -47,7 +35,9 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 		PyErr_SetObject(exception, PyExc_ValueError);
 		return NULL;
 	}
-	if(rand_max <= 0) {
+	if(rand_max <= 1) {
+		// rand_max needs to be >1 because for 1 the upperLimitBits will be 0 and no random number
+		// will be returned; the logic of this function is that 0 <= n < rand_max
 		PyErr_SetObject(exception, PyExc_ValueError);
 		return NULL;
 	}
@@ -62,9 +52,9 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 		}
 	}
 
-	// how many bits are needed to store max, need to use log(2) as log() is base e
-	// need to use rand_max + 1 to properly handle request for range 0:1
-	upperLimitBits = ceil(log(rand_max+1) / log(2));
+	// how many bits are needed to store max
+	// need to use log(2) as log() is base e
+	upperLimitBits = ceil(log(rand_max) / log(2));
 	upperLimitBytes = (long) ceil(upperLimitBits/8); // how many bytes
 
 	/* Fetch random bytes until it's lower than desired range */
@@ -159,10 +149,21 @@ static PyObject *winrandom_long(PyObject *self, PyObject *args)
 static PyMethodDef WinrandomMethods[] = {
 	{"long", winrandom_long, METH_VARARGS, "Get cryptographically strong random long integer."},
 	{"bytes", winrandom_bytes, METH_VARARGS, "Get N cryptographically strong random bytes."},
-	{"range", winrandom_range, METH_VARARGS, "Get cryptographically strong random index between 0 and N."},
+	{"range", winrandom_range, METH_VARARGS, "Get cryptographically strong random integer N that is 0 <= N < MAX."},
 	{NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC initwinrandom(void) {
-	(void) Py_InitModule("winrandom", WinrandomMethods);
+PyMODINIT_FUNC
+initwinrandom(void) {
+	PyObject *m;
+
+	 m = Py_InitModule("winrandom", WinrandomMethods);
+	 if (m == NULL)
+		return;
+
+	 exception = PyErr_NewException("winrandom.error", NULL, NULL);
+	 Py_INCREF(exception);
+	 PyModule_AddObject(m, "error", exception);
+
+	 //PyDict_SetItemString(d, "error", exception);
 }
