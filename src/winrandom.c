@@ -18,7 +18,7 @@ PyObject *exception = NULL;
 #include <ctype.h>
 
 /* This function implements B.5.1.1 Simple Discard Method from NIST SP800-90
- * http://csrc.nist.gov/publications/nistpubs/800-90/SP800-90revised_March2007.pdf
+ * http://csrc.nist.gov/publications/nistpubs/800-90A/SP800-90A.pdf
  * Simple discard method is used to produce random LONG until it fits in 0..MAX range
  */
 static PyObject *winrandom_range(PyObject *self, PyObject *args) {
@@ -37,7 +37,7 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 	}
 	if(rand_max <= 1) {
 		// rand_max needs to be >1 because for 1 the upperLimitBits will be 0 and no random number
-		// will be returned; the logic of this function is that 0 <= n < rand_max
+		// will be returned; the logic of this function is that 0 <= n <= rand_max-1
 		PyErr_SetObject(exception, PyExc_ValueError);
 		return NULL;
 	}
@@ -54,7 +54,7 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 
 	// how many bits are needed to store max
 	// need to use log(2) as log() is base e
-	upperLimitBits = ceil(log(rand_max) / log(2));
+	upperLimitBits = ceil(log(rand_max-1) / log(2));
 	upperLimitBytes = (long) ceil(upperLimitBits/8); // how many bytes
 
 	/* Fetch random bytes until it's lower than desired range */
@@ -146,10 +146,15 @@ static PyObject *winrandom_long(PyObject *self, PyObject *args)
 	return Py_BuildValue("k", pbRandomData);
 }
 
+#define LONG_TEXT 	"winrandom.long() - get cryptographically strong pseudo-random long integer."
+#define BYTES_TEXT 	"winrandom.bytes(N) - get N cryptographically strong pseudo-random bytes."
+#define RANGE_TEXT 	"winrandom.range(MAX) - get cryptographically strong pseudo-random integer N that is 0 <= N < MAX." \
+					"Note that the returned is between 0 and MAX-1 inclusive. To cycle between 0 and 1 you need range(2)."
+
 static PyMethodDef WinrandomMethods[] = {
-	{"long", winrandom_long, METH_VARARGS, "Get cryptographically strong random long integer."},
-	{"bytes", winrandom_bytes, METH_VARARGS, "Get N cryptographically strong random bytes."},
-	{"range", winrandom_range, METH_VARARGS, "Get cryptographically strong random integer N that is 0 <= N < MAX."},
+	{"long", winrandom_long, METH_VARARGS, LONG_TEXT },
+	{"bytes", winrandom_bytes, METH_VARARGS, BYTES_TEXT },
+	{"range", winrandom_range, METH_VARARGS, RANGE_TEXT },
 	{NULL, NULL, 0, NULL}
 };
 
