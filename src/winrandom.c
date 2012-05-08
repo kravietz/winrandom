@@ -17,25 +17,26 @@ PyObject *exception = NULL;
 #include <stdio.h>
 #include <ctype.h>
 
-/* This function implements B.5.1.1 Simple Discard Method from NIST SP800-90
+/* This function implements B.5.1.2 The Complex Discard Method from NIST SP800-90
  * http://csrc.nist.gov/publications/nistpubs/800-90A/SP800-90A.pdf
- * Simple discard method is used to produce random LONG until it fits in 0..MAX range
+ * Discard method is used to produce random LONG until it fits in 0..MAX range
+ * Variables are named using the NIST document convention (r, c etc).
  */
 static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 	HCRYPTPROV hProv;
-	unsigned long rand_out;
+	unsigned long c;	// output random number
 	static unsigned long iContinousRndTest = 0L;
-	unsigned long upperLimitBytes;
+	unsigned long upperLimitBytes, t;
 	double upperLimitBits; /* because ceil() returns DOUBLE */
-	int rand_max; // unsigned so we can catch negative arguments
+	unsigned long r; // upper limit, unsigned so we can catch negative arguments
 	int ok;
 
-	ok = PyArg_ParseTuple(args, "I", &rand_max);
+	ok = PyArg_ParseTuple(args, "l", &r);
 	if(!ok) {
 		PyErr_SetObject(exception, PyExc_ValueError);
 		return NULL;
 	}
-	if(rand_max <= 1) {
+	if(r <= 1) {
 		// rand_max needs to be >1 because for 1 the upperLimitBits will be 0 and no random number
 		// will be returned; the logic of this function is that 0 <= n <= rand_max-1
 		PyErr_SetObject(exception, PyExc_ValueError);
@@ -54,30 +55,37 @@ static PyObject *winrandom_range(PyObject *self, PyObject *args) {
 
 	// how many bits are needed to store max
 	// need to use log(2) as log() is base e
-	upperLimitBits = ceil(log(rand_max-1) / log(2));
-	upperLimitBytes = (long) ceil(upperLimitBits/8); // how many bytes
+	upperLimitBits = ceil(log(r-1) / log(2));
+	t = (long) ceil(upperLimitBits/8); // how many bytes
 
 	/* Fetch random bytes until it's lower than desired range */
 	while(1) {
 		long retVal;
-		rand_out = 0L; /* overwrite whatever was there */
-		retVal = CryptGenRandom(hProv, upperLimitBytes, (BYTE *) &rand_out);
+		c = 0L; /* overwrite whatever was there */
+
+		/*
+		 * This implementation of the discard is operating on bytes (8 bit blocks) and
+		 * not single bytes, like the NIST version. In practice this means that we need to execute
+		 * more loops to find the right value (c < rand_max). The farther rand_max is
+		 * from byte boundary, the more checks we need to perform.
+		 */
+		retVal = CryptGenRandom(hProv, t, (BYTE *) &c);
 		if(!retVal) {
 			PyErr_SetString(exception, "Unable to fetch random data from Windows");
 			return NULL;
 		}
 		/* FIPS 140-2 p. 44 Continuous random number generator test */
 		/* Check if previous number wasn't the same as current */
-		if(upperLimitBits > 15 && rand_out == iContinousRndTest) {
+		if(upperLimitBits > 15 && c == iContinousRndTest) {
 				PyErr_SetString(exception, "Continuous random number generator test failed");
 				return NULL;
 			}
-		iContinousRndTest = rand_out; /* preserve this value for continuous test */
-		if(rand_out < (unsigned int) rand_max) break; // found!
+		iContinousRndTest = c; /* preserve this value for continuous test */
+		if(c < (unsigned long) r) break; // found!
 	}
 
 	CryptReleaseContext(hProv, 0);
-	return Py_BuildValue("k", rand_out);
+	return Py_BuildValue("k", c);
 }
 
 static PyObject *winrandom_bytes(PyObject *self, PyObject *args)
