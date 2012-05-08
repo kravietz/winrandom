@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 
 winrandom1 = Extension('winrandom',
-	libraries=['Crypt32'],
+	libraries=['Crypt32', 'Advapi32'],
 	sources=['src/winrandom.c'])
 
 setup (name='winrandom',
