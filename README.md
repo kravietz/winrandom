@@ -19,6 +19,9 @@ This module gives direct access to Windows Cryptographic API CryptGetRandom() fu
 		706
 
 # History
-* 1.0	added winrandom.long()
-* 1.1	added winrandom.bytes(num)
+* 1.0 added winrandom.long(), first published at [IPSec.pl](http://ipsec.pl/winrandom)
+* 1.1 added winrandom.bytes(num)
 * 1.2 added winrandom.range(max)
+
+# Note
+**This module is obsolete since Python 2.4 when [os.urandom](https://docs.python.org/2/library/os.html#os.urandom) was added to provide operating system based randomness on all supported systems.**
